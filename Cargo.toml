@@ -1,0 +1,8 @@
+[package]
+name = "burncloud-client-tray"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+systray = "0.4.0"
+webbrowser = "0.8"
