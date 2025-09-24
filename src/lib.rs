@@ -1,6 +1,7 @@
 use systray::Application;
 use std::process;
 use std::fmt;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Debug)]
 pub struct SimpleError(String);
@@ -12,6 +13,18 @@ impl fmt::Display for SimpleError {
 }
 
 impl std::error::Error for SimpleError {}
+
+// 简单的原子标志
+static SHOULD_SHOW: AtomicBool = AtomicBool::new(false);
+static SHOULD_HIDE: AtomicBool = AtomicBool::new(false);
+
+pub fn should_show_window() -> bool {
+    SHOULD_SHOW.swap(false, Ordering::Relaxed)
+}
+
+pub fn should_hide_window() -> bool {
+    SHOULD_HIDE.swap(false, Ordering::Relaxed)
+}
 
 /// 启动 BurnCloud 托盘应用
 ///
@@ -32,16 +45,13 @@ pub fn start_tray() -> Result<(), Box<dyn std::error::Error>> {
     match app.set_icon_from_file(&ico_path.to_string_lossy()) {
         Ok(_) => {},
         Err(_) => {
-            // 如果设置图标失败，尝试不设置图标或使用系统默认图标
             println!("Warning: Failed to set custom icon, using default");
         }
     }
 
     // 添加启动界面菜单项
-    app.add_menu_item(&"启动界面".to_string(), |_| -> Result<(), SimpleError> {
-        if let Err(e) = webbrowser::open("http://127.0.0.1:8080") {
-            eprintln!("Failed to open browser: {}", e);
-        }
+    app.add_menu_item(&"显示界面".to_string(), move |_| -> Result<(), SimpleError> {
+        SHOULD_SHOW.store(true, Ordering::Relaxed);
         Ok(())
     })?;
 
