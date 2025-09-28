@@ -3,6 +3,9 @@ use std::process;
 use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+// 嵌入图标数据
+static ICON_DATA: &[u8] = include_bytes!("../res/burncloud.ico");
+
 #[derive(Debug)]
 pub struct SimpleError(String);
 
@@ -38,14 +41,29 @@ pub fn should_hide_window() -> bool {
 pub fn start_tray() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = Application::new()?;
 
-    // 直接使用 res/burncloud.ico 作为默认图标
-    let ico_path = std::path::Path::new("./res/burncloud.ico");
+    // 创建临时文件来设置图标
+    let temp_dir = std::env::temp_dir();
+    let temp_icon_path = temp_dir.join("burncloud_temp.ico");
 
-    // 尝试设置图标，如果失败则使用默认方式
-    match app.set_icon_from_file(&ico_path.to_string_lossy()) {
-        Ok(_) => {},
-        Err(_) => {
-            println!("Warning: Failed to set custom icon, using default");
+    // 将嵌入的图标数据写入临时文件
+    match std::fs::write(&temp_icon_path, ICON_DATA) {
+        Ok(_) => {
+            // 尝试使用临时文件设置图标
+            match app.set_icon_from_file(&temp_icon_path.to_string_lossy()) {
+                Ok(_) => {
+                    println!("Icon set successfully");
+                    // 设置成功后清理临时文件
+                    let _ = std::fs::remove_file(&temp_icon_path);
+                },
+                Err(e) => {
+                    println!("Warning: Failed to set icon: {:?}", e);
+                    // 清理临时文件
+                    let _ = std::fs::remove_file(&temp_icon_path);
+                }
+            }
+        },
+        Err(e) => {
+            println!("Warning: Failed to create temporary icon file: {:?}", e);
         }
     }
 
